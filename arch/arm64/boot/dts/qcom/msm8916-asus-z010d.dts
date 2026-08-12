@@ -7,6 +7,8 @@
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
 #include <dt-bindings/leds/common.h>
 
 / {
@@ -91,7 +93,30 @@
 
 		pinctrl-0 = <&accel_int_default>;
 		pinctrl-names = "default";
+
+		mount-matrix = "-1", "0", "0",
+                       "0", "-1", "0",
+                       "0", "0", "1";
 	};
+
+	/* 2nd variant of accelerometer, can't test it */
+	accelerometer@18 {
+        compatible = "bosch,bma253";
+        reg = <0x18>;
+
+        interrupt-parent = <&tlmm>;
+        interrupts = <114 IRQ_TYPE_EDGE_FALLING>;
+
+        vdd-supply = <&pm8916_l17>;
+        vddio-supply = <&pm8916_l6>;
+
+        pinctrl-0 = <&accel_int_default>;
+        pinctrl-names = "default";
+
+        mount-matrix = "-1", "0", "0",
+                       "0", "-1", "0",
+                       "0", "0", "1";
+    	};
 
 	magnetometer@c {
 		compatible = "asahi-kasei,ak09911";
@@ -105,6 +130,20 @@
 		pinctrl-0 = <&mag_reset_default>;
 		pinctrl-names = "default";
 	};
+
+	light-sensor@1e {
+        compatible = "dynaimage,ap3426", "dynaimage,ap3216c";
+        reg = <0x1e>;
+
+        interrupt-parent = <&tlmm>;
+        interrupts = <113 IRQ_TYPE_EDGE_FALLING>; /* vendor-specific */
+
+        vdd-supply = <&pm8916_l17>;
+        vddio-supply = <&pm8916_l6>;
+
+        pinctrl-0 = <&als_int_default>;
+        pinctrl-names = "default";
+    	};
 
 	led-controller@45 {
 		compatible = "awinic,aw2013";
@@ -128,6 +167,27 @@
 			function = LED_FUNCTION_INDICATOR;
 			color = <LED_COLOR_ID_RED>;
 		};
+	};
+};
+
+&blsp_i2c4 {
+	status = "okay";
+
+	charger@14 {
+		compatible = "qcom,smb1360";
+		reg = <0x14>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <62 IRQ_TYPE_LEVEL_LOW>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&smb1360_default>;
+
+		qcom,float-voltage-mv = <4380>;
+		qcom,iterm-ma = <200>;
+		qcom,recharge-thresh-mv = <100>; 
+		
+		regulator-name = "smb1360_otg_vreg";
 	};
 };
 
@@ -284,6 +344,21 @@
 };
 
 &tlmm {
+
+	als_int_default: als-int-default-state {
+        pins = "gpio113";
+        function = "gpio";
+        drive-strength = <2>;
+        bias-disable;
+	};
+
+	smb1360_default: smb1360-default-state {
+		pins = "gpio62";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-up;
+	};
+
 	accel_int_default: accel-int-default-state {
 		pins = "gpio114";
 		function = "gpio";
